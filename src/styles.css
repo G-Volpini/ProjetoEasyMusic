@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans text-dark bg-white;
+  }
+  
+  * {
+    @apply antialiased;
+  }
+}
+
+@layer utilities {
+  .space-y-4\.5 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1.125rem;
+  }
+}
