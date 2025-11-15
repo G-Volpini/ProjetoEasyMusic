@@ -1,0 +1,35 @@
+[
+  {
+    "_id": "1763154403672",
+    "email": "stormmigrado@gmail.com",
+    "password": "$2a$10$4otRAWZIxDgL6zCcYBiqSO/Ph4elQ6po0ITXVMt4kBrrnqjViB6S.",
+    "userType": "freelancer",
+    "name": "dsadadadadsada",
+    "phone": "15981206987",
+    "document": "",
+    "isActive": true,
+    "createdAt": "2025-11-14T21:06:43.672Z"
+  },
+  {
+    "_id": "1763160101968",
+    "email": "teste@gmail.com",
+    "password": "$2a$10$y3Vh6SxHcf7L0K/ocZ0bZOwog0/p0A6qgGnqHHB6YvnQP07WnxYTO",
+    "userType": "employer",
+    "companyName": "TEste",
+    "phone": "15981206987",
+    "document": "",
+    "isActive": true,
+    "createdAt": "2025-11-14T22:41:41.968Z"
+  },
+  {
+    "_id": "1763164252639",
+    "email": "gabrielvolpini946@gmail.com",
+    "password": "$2a$10$kdL.2TJ/0PkBJSOEaIt/L.kjTyKzEB8rnocszCkc6D8VCyPonRhYy",
+    "userType": "freelancer",
+    "name": "dsadadadadsada",
+    "phone": "15981206987",
+    "document": "",
+    "isActive": true,
+    "createdAt": "2025-11-14T23:50:52.639Z"
+  }
+]

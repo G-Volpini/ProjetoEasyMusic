@@ -1,9 +1,13 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { HeaderComponent } from './header.component';
 import { FooterComponent } from './footer.component';
+import { AuthService } from '../services/auth.service';
+import { ProfileService } from '../services/profile.service';
+import { ProjectService } from '../services/project.service';
+import { Project } from '../models/project.model';
 
 @Component({
   selector: 'app-hire-freelancers',
@@ -11,7 +15,6 @@ import { FooterComponent } from './footer.component';
   imports: [
     CommonModule,
     FormsModule,
-    RouterLink,
     HeaderComponent,
     FooterComponent
   ],
@@ -40,7 +43,8 @@ import { FooterComponent } from './footer.component';
               <input
                 type="text"
                 [(ngModel)]="searchQuery"
-                placeholder="Estou procurando um cantor para evento corporativo em Sorocaba, orçamento de R$ 2.000"
+                (keyup.enter)="onSearch()"
+                placeholder="Ex: cantor para evento corporativo em Sorocaba, orçamento de R$ 2.000"
                 class="flex-1 bg-transparent text-primary text-base outline-none placeholder:text-primary placeholder:opacity-70"
               />
               <button (click)="onSearch()" class="w-10 h-10 rounded-full bg-gradient-to-r from-primary via-primary-dark to-primary-darker opacity-20 hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -63,9 +67,10 @@ import { FooterComponent } from './footer.component';
         <div class="mt-14">
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             @for (category of categories; track category.title) {
-              <div class="rounded-xl overflow-hidden h-[262px] relative group cursor-pointer">
+              <div (click)="searchByCategory(category.title)" 
+                   class="rounded-xl overflow-hidden h-[262px] relative group cursor-pointer transition-transform hover:scale-105">
                 <img [src]="category.image" [alt]="category.title" class="w-full h-full object-cover">
-                <div class="absolute inset-0 bg-gradient-to-b from-black/40 to-[#010E27]/80 flex items-center justify-center">
+                <div class="absolute inset-0 bg-gradient-to-b from-black/40 to-[#010E27]/80 flex items-center justify-center group-hover:from-black/50 group-hover:to-[#010E27]/90 transition-all">
                   <h3 class="text-white text-lg font-normal text-center px-8">{{ category.title }}</h3>
                 </div>
               </div>
@@ -74,7 +79,8 @@ import { FooterComponent } from './footer.component';
 
           <!-- View All Categories -->
           <div class="mt-8 text-center">
-            <button class="border border-grey-91 bg-white rounded-full px-7 py-3 text-grey-10 text-base hover:border-grey-10 transition-colors">
+            <button (click)="viewAllCategories()" 
+                    class="border border-grey-91 bg-white rounded-full px-7 py-3 text-grey-10 text-base hover:border-grey-10 transition-colors">
               Pesquisar todas as categorias
             </button>
           </div>
@@ -139,11 +145,13 @@ import { FooterComponent } from './footer.component';
 
             <!-- CTA Buttons -->
             <div class="flex flex-wrap gap-3 justify-center lg:justify-start mt-12">
-              <button class="bg-primary text-white rounded-full px-8 py-3 text-base hover:bg-primary-dark transition-colors">
-                Começar
+              <button (click)="startHiring()" 
+                      class="bg-primary text-white rounded-full px-8 py-3 text-base hover:bg-primary-dark transition-colors">
+                Começar Agora
               </button>
-              <button class="border border-grey-91 bg-white text-grey-10 rounded-full px-7 py-3 text-base hover:border-grey-10 transition-colors">
-                Procurar músicos
+              <button (click)="goToExplore()" 
+                      class="border border-grey-91 bg-white text-grey-10 rounded-full px-7 py-3 text-base hover:border-grey-10 transition-colors">
+                Explorar Trabalhos
               </button>
             </div>
           </div>
@@ -160,98 +168,160 @@ import { FooterComponent } from './footer.component';
       </div>
     </section>
 
-    <!-- Featured Musicians Section -->
+    <!-- Featured Projects Section -->
     <section class="bg-gradient-to-b from-white to-grey-2 px-4 sm:px-6 lg:px-8">
       <div class="max-w-7xl mx-auto py-24">
         <div class="mb-7">
           <h2 class="text-4xl sm:text-5xl lg:text-[60px] font-normal leading-tight lg:leading-[60px] tracking-tight lg:tracking-[-1.8px] text-grey-10 mb-7">
-            Contrate os melhores músicos, selecionados pela equipe do EasyMusic.
+            Trabalhos disponíveis para você contratar agora
           </h2>
+          <p class="text-lg text-grey-10 tracking-[-0.54px] leading-6">
+            Veja os trabalhos mais recentes publicados por músicos e profissionais da sua região
+          </p>
         </div>
 
         <!-- Tabs -->
         <div class="border-b border-grey-91 mb-8">
           <div class="flex gap-8 overflow-x-auto">
-            <button class="text-grey-10 text-sm pb-4 border-b-2 border-grey-10 whitespace-nowrap">Tudo</button>
-            <button class="text-grey-44 text-sm pb-4 border-b-2 border-transparent hover:text-grey-10 whitespace-nowrap">Designers de logotipo</button>
-            <button class="text-grey-44 text-sm pb-4 border-b-2 border-transparent hover:text-grey-10 whitespace-nowrap">Designers de embalagem</button>
-            <button class="text-grey-44 text-sm pb-4 border-b-2 border-transparent hover:text-grey-10 whitespace-nowrap">Ilustradores</button>
-            <button class="text-grey-44 text-sm pb-4 border-b-2 border-transparent hover:text-grey-10 whitespace-nowrap">Designers de UI/UX</button>
+            <button (click)="filterProjects('all')" 
+                    [class.text-grey-10]="activeTab === 'all'"
+                    [class.text-grey-44]="activeTab !== 'all'"
+                    [class.border-grey-10]="activeTab === 'all'"
+                    [class.border-transparent]="activeTab !== 'all'"
+                    class="text-sm pb-4 border-b-2 hover:text-grey-10 whitespace-nowrap transition-colors">
+              Todos
+            </button>
+            <button (click)="filterProjects('Pop')" 
+                    [class.text-grey-10]="activeTab === 'Pop'"
+                    [class.text-grey-44]="activeTab !== 'Pop'"
+                    [class.border-grey-10]="activeTab === 'Pop'"
+                    [class.border-transparent]="activeTab !== 'Pop'"
+                    class="text-sm pb-4 border-b-2 hover:text-grey-10 whitespace-nowrap transition-colors">
+              Pop
+            </button>
+            <button (click)="filterProjects('Rock')" 
+                    [class.text-grey-10]="activeTab === 'Rock'"
+                    [class.text-grey-44]="activeTab !== 'Rock'"
+                    [class.border-grey-10]="activeTab === 'Rock'"
+                    [class.border-transparent]="activeTab !== 'Rock'"
+                    class="text-sm pb-4 border-b-2 hover:text-grey-10 whitespace-nowrap transition-colors">
+              Rock
+            </button>
+            <button (click)="filterProjects('Jazz')" 
+                    [class.text-grey-10]="activeTab === 'Jazz'"
+                    [class.text-grey-44]="activeTab !== 'Jazz'"
+                    [class.border-grey-10]="activeTab === 'Jazz'"
+                    [class.border-transparent]="activeTab !== 'Jazz'"
+                    class="text-sm pb-4 border-b-2 hover:text-grey-10 whitespace-nowrap transition-colors">
+              Jazz
+            </button>
+            <button (click)="filterProjects('Sertanejo')" 
+                    [class.text-grey-10]="activeTab === 'Sertanejo'"
+                    [class.text-grey-44]="activeTab !== 'Sertanejo'"
+                    [class.border-grey-10]="activeTab === 'Sertanejo'"
+                    [class.border-transparent]="activeTab !== 'Sertanejo'"
+                    class="text-sm pb-4 border-b-2 hover:text-grey-10 whitespace-nowrap transition-colors">
+              Sertanejo
+            </button>
           </div>
         </div>
 
-        <!-- Musicians Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
-          @for (musician of musicians; track musician.name) {
-            <div class="border border-grey-88 bg-white rounded-md p-1.5 hover:shadow-card transition-shadow">
-              <!-- Works Preview -->
-              <div class="flex gap-0.5 mb-8 rounded-sm overflow-hidden h-[84px]">
-                @for (work of musician.works; track work) {
-                  <img [src]="work" [alt]="musician.name" class="flex-1 object-cover">
-                }
-              </div>
+        <!-- Loading State -->
+        @if (loadingProjects) {
+          <div class="text-center py-20">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <p class="text-grey-44 mt-4">Carregando trabalhos disponíveis...</p>
+          </div>
+        }
 
-              <!-- Profile Info -->
-              <div class="px-3 pb-5">
-                <!-- Avatar -->
-                <div class="flex justify-center -mt-8 mb-2.5">
-                  <div class="relative">
-                    <img 
-                      [src]="musician.avatar" 
-                      [alt]="musician.name"
-                      class="w-[60px] h-[60px] rounded-full border-2 border-white shadow-card"
-                    />
-                    @if (musician.pro) {
-                      <div class="absolute -bottom-1 -right-1 bg-gradient-to-r from-[#0088FD] via-primary-dark to-primary-darker text-white text-[9px] uppercase px-2 py-0.5 rounded">
-                        Pro
+        <!-- Projects Grid -->
+        @if (!loadingProjects && featuredProjects.length > 0) {
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
+            @for (project of featuredProjects; track project._id) {
+              <div (click)="viewProject(project._id)" 
+                   class="border border-grey-88 bg-white rounded-md p-3 hover:shadow-card transition-all cursor-pointer hover:-translate-y-1">
+                <!-- Project Image -->
+                <div class="mb-4 rounded-lg overflow-hidden h-[160px] bg-gray-100">
+                  <img [src]="project.imageUrl" [alt]="project.title" class="w-full h-full object-cover">
+                </div>
+
+                <!-- Project Info -->
+                <div class="px-2 pb-3">
+                  <!-- Title & Genre -->
+                  <div class="mb-3">
+                    <div class="flex items-start justify-between gap-2 mb-2">
+                      <h3 class="text-grey-10 text-base font-semibold leading-tight line-clamp-2 flex-1">
+                        {{ project.title }}
+                      </h3>
+                      <span class="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full whitespace-nowrap">
+                        {{ project.musicalGenre }}
+                      </span>
+                    </div>
+                    <p class="text-grey-44 text-sm line-clamp-2">{{ project.description }}</p>
+                  </div>
+
+                  <!-- Author -->
+                  <div class="flex items-center gap-2 mb-3 pb-3 border-b border-grey-91">
+                    <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                      <svg class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                      </svg>
+                    </div>
+                    <span class="text-grey-44 text-sm">{{ project.author.name }}</span>
+                  </div>
+
+                  <!-- Budget & Location -->
+                  <div class="space-y-2 mb-3">
+                    @if (project.budget) {
+                      <div class="flex items-center gap-2 text-sm">
+                        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="text-grey-10 font-semibold">R$ {{ project.budget.min }} - R$ {{ project.budget.max }}</span>
+                      </div>
+                    }
+                    @if (project.location?.city) {
+                      <div class="flex items-center gap-2 text-sm text-grey-44">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+                        </svg>
+                        <span>{{ project.location?.city }}{{ project.location?.state ? ', ' + project.location?.state : '' }}</span>
                       </div>
                     }
                   </div>
-                </div>
 
-                <!-- Name & Location -->
-                <div class="text-center mb-2.5">
-                  <h3 class="text-grey-10 text-lg leading-[23.39px] mb-0.5">{{ musician.name }}</h3>
-                  <div class="flex items-center justify-center gap-1 text-grey-44 text-sm">
-                    <svg class="w-2 h-3" viewBox="0 0 9 12" fill="#959595">
-                      <path d="M4.28004 0.00683598C3.14491 0.00683598 2.05633 0.45756 1.25367 1.26022C0.451017 2.06287 0 3.15146 0 4.28658C0 7.71034 4.28004 11.9906 4.28004 11.9906C4.28004 11.9906 8.56008 7.71034 8.56008 4.28658C8.56016 3.7245 8.44951 3.16866 8.23445 2.64935C8.01939 2.13004 7.70415 1.65767 7.3067 1.26022C6.90925 0.862765 6.43717 0.547239 5.91786 0.332176C5.39855 0.117114 4.84212 0.00675727 4.28004 0.00683598Z"/>
-                    </svg>
-                    <span>{{ musician.location }}</span>
-                    @if (musician.responsive) {
-                      <span class="mx-1">•</span>
-                      <span class="text-green-27">Responde rapidamente</span>
-                    }
-                  </div>
-                </div>
-
-                <!-- Hire Button -->
-                <button class="w-full border border-grey-91 bg-white text-grey-10 text-sm rounded-full py-2 mb-2.5 hover:border-grey-10 transition-colors">
-                  Contratar {{ musician.name.split(' ')[0] }}
-                </button>
-
-                <!-- Projects Badge -->
-                <div class="flex justify-center gap-2">
-                  @if (musician.featured) {
-                    <span class="bg-primary/5 border border-primary/10 text-primary text-xs px-2.5 py-2 rounded-lg">
-                      Em destaque
-                    </span>
-                  }
-                  <span class="bg-white border border-primary/10 text-primary text-xs px-2.5 py-2 rounded-lg">
-                    {{ musician.projects }} projetos concluídos
-                  </span>
+                  <!-- View Button -->
+                  <button class="w-full border border-grey-91 bg-white text-grey-10 text-sm rounded-full py-2 hover:border-primary hover:text-primary transition-colors">
+                    Ver Detalhes
+                  </button>
                 </div>
               </div>
-            </div>
-          }
-        </div>
+            }
+          </div>
+        }
+
+        <!-- Empty State -->
+        @if (!loadingProjects && featuredProjects.length === 0) {
+          <div class="text-center py-20">
+            <svg class="mx-auto h-12 w-12 text-grey-44" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p class="text-grey-44 mt-4 text-lg">Nenhum trabalho disponível no momento</p>
+            <button (click)="goToExplore()" class="mt-4 text-primary hover:text-primary-dark font-medium">
+              Ver todos os trabalhos
+            </button>
+          </div>
+        }
 
         <!-- CTA Buttons -->
         <div class="flex flex-wrap gap-3 justify-center">
-          <button class="bg-primary text-white rounded-full px-8 py-3 text-base hover:bg-primary-dark transition-colors">
-            Começar
+          <button (click)="startHiring()" 
+                  class="bg-primary text-white rounded-full px-8 py-3 text-base hover:bg-primary-dark transition-colors">
+            Começar Agora
           </button>
-          <button class="border border-grey-91 bg-white text-grey-10 rounded-full px-7 py-3 text-base hover:border-grey-10 transition-colors">
-            Procurar freelancers
+          <button (click)="goToExplore()" 
+                  class="border border-grey-91 bg-white text-grey-10 rounded-full px-7 py-3 text-base hover:border-grey-10 transition-colors">
+            Explorar Trabalhos
           </button>
         </div>
       </div>
@@ -311,8 +381,9 @@ import { FooterComponent } from './footer.component';
 
         <!-- CTA Button -->
         <div class="text-center">
-          <button class="bg-primary text-white rounded-full px-8 py-3 text-base hover:bg-primary-dark transition-colors">
-            Começar
+          <button (click)="startHiring()" 
+                  class="bg-primary text-white rounded-full px-8 py-3 text-base hover:bg-primary-dark transition-colors">
+            Começar Agora
           </button>
         </div>
       </div>
@@ -352,11 +423,13 @@ import { FooterComponent } from './footer.component';
 
         <!-- CTA Buttons -->
         <div class="flex flex-wrap gap-3 justify-center">
-          <button class="bg-primary text-white rounded-full px-8 py-3 text-base hover:bg-primary-dark transition-colors">
-            Começar
+          <button (click)="startHiring()" 
+                  class="bg-primary text-white rounded-full px-8 py-3 text-base hover:bg-primary-dark transition-colors">
+            Começar Agora
           </button>
-          <button class="border border-grey-91 bg-white text-grey-10 rounded-full px-7 py-3 text-base hover:border-grey-10 transition-colors">
-            Procurar músico
+          <button (click)="goToExplore()" 
+                  class="border border-grey-91 bg-white text-grey-10 rounded-full px-7 py-3 text-base hover:border-grey-10 transition-colors">
+            Explorar Freelancers
           </button>
         </div>
       </div>
@@ -372,7 +445,8 @@ import { FooterComponent } from './footer.component';
           <p class="text-lg text-grey-10 tracking-[-0.54px] leading-6 mb-12 max-w-[660px] mx-auto">
             Nossa equipe ajuda você a encontrar os músicos ideais para eventos corporativos, produções especiais ou parcerias exclusivas.
           </p>
-          <button class="bg-primary text-white text-lg rounded-full px-6 py-3 hover:bg-primary-dark transition-colors">
+          <button (click)="contactUs()" 
+                  class="bg-primary text-white text-lg rounded-full px-6 py-3 hover:bg-primary-dark transition-colors">
             Fale conosco
           </button>
         </div>
@@ -381,7 +455,7 @@ import { FooterComponent } from './footer.component';
     <app-footer></app-footer>
   `,
 })
-export class HireFreelancersComponent {
+export class HireFreelancersComponent implements OnInit {
   categories = [
     { title: 'Cantores / Bandas', image: 'https://images.pexels.com/photos/1763075/pexels-photo-1763075.jpeg?auto=compress&cs=tinysrgb&w=400' },
     { title: 'DJs e Produtores', image: 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=400' },
@@ -499,19 +573,103 @@ export class HireFreelancersComponent {
     },
     {
       text: '"Encontrei um violinista perfeito em poucos minutos. A plataforma facilitou todo o processo."',
-      author: 'Ulysses Design Co',
+      author: 'Pedro Santos',
       avatar: 'https://i.pravatar.cc/150?img=6',
     },
     {
       text: '"A contratação foi super segura, e o DJ deixou a festa inesquecível. Recomendo demais!"',
-      author: 'Kira Koroknai',
+      author: 'Mariana Costa',
       avatar: 'https://i.pravatar.cc/150?img=7',
     },
   ];
 
   searchQuery = '';
+  featuredProjects: Project[] = [];
+  allProjects: Project[] = [];
+  loadingProjects = false;
+  activeTab = 'all';
+
+  constructor(
+    private router: Router,
+    private authService: AuthService,
+    private profileService: ProfileService,
+    private projectService: ProjectService
+  ) {}
+
+  ngOnInit(): void {
+    this.loadFeaturedProjects();
+  }
+
+  loadFeaturedProjects(): void {
+    this.loadingProjects = true;
+    this.projectService.getProjects().subscribe({
+      next: (response: any) => {
+        this.allProjects = response.projects || [];
+        // Pega os 8 projetos mais recentes
+        this.featuredProjects = this.allProjects
+          .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
+          .slice(0, 8);
+        this.loadingProjects = false;
+      },
+      error: (error) => {
+        console.error('Erro ao carregar projetos:', error);
+        this.loadingProjects = false;
+      }
+    });
+  }
+
+  filterProjects(genre: string): void {
+    this.activeTab = genre;
+    if (genre === 'all') {
+      this.featuredProjects = this.allProjects.slice(0, 8);
+    } else {
+      this.featuredProjects = this.allProjects
+        .filter(p => p.musicalGenre === genre)
+        .slice(0, 8);
+    }
+  }
+
+  viewProject(id: string): void {
+    this.router.navigate(['/project', id]);
+  }
 
   onSearch(): void {
-    console.log('Searching for:', this.searchQuery);
+    if (this.searchQuery.trim()) {
+      // Redireciona para a página de explorar com busca
+      this.router.navigate(['/find-jobs'], { 
+        queryParams: { search: this.searchQuery } 
+      });
+    }
+  }
+
+  searchByCategory(category: string): void {
+    // Redireciona para explorar filtrando pela categoria
+    this.router.navigate(['/find-jobs'], { 
+      queryParams: { category: category } 
+    });
+  }
+
+  viewAllCategories(): void {
+    this.router.navigate(['/find-jobs']);
+  }
+
+  startHiring(): void {
+    // Verifica se está logado
+    if (!this.authService.isLoggedIn()) {
+      this.router.navigate(['/login'], {
+        queryParams: { returnUrl: '/find-jobs' }
+      });
+    } else {
+      this.router.navigate(['/find-jobs']);
+    }
+  }
+
+  goToExplore(): void {
+    this.router.navigate(['/find-jobs']);
+  }
+
+  contactUs(): void {
+    // Pode abrir um modal ou redirecionar para página de contato
+    alert('Entre em contato conosco pelo email: contato@easymusic.com ou WhatsApp: (11) 98765-4321');
   }
 }

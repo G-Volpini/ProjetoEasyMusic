@@ -3,120 +3,161 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HeaderComponent } from './header.component';
 import { FooterComponent } from './footer.component';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '../services/auth.service';
+import { RegisterRequest } from '../models/user.model';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    HeaderComponent,
-    FooterComponent,
-    RouterLink
-  ],
+  imports: [CommonModule, FormsModule, HeaderComponent, FooterComponent, RouterLink],
   template: `
     <app-header></app-header>
-    <div class="bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-        <div class="sm:mx-auto sm:w-full sm:max-w-md">
-            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                Crie uma nova conta
-            </h2>
-            <p class="mt-2 text-center text-sm text-gray-600">
-                Ou
-                <a routerLink="/login" class="font-medium text-indigo-600 hover:text-indigo-500">
-                    faça login em sua conta existente
-                </a>
-            </p>
-        </div>
+    <div class="min-h-screen bg-gray-50 py-12">
+      <div class="max-w-2xl mx-auto px-4">
+        <h1 class="text-3xl font-bold text-center mb-8">Criar Conta</h1>
+        
+        @if (errorMessage) {
+          <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {{ errorMessage }}
+          </div>
+        }
+        
+        @if (successMessage) {
+          <div class="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+            {{ successMessage }}
+          </div>
+        }
+        
+        <div class="bg-white rounded-lg shadow p-8">
+          <div class="flex justify-center mb-6">
+            <button type="button" (click)="formData.userType = 'freelancer'"
+                    [class]="formData.userType === 'freelancer' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'"
+                    class="px-6 py-2 rounded-l-full">Músico</button>
+            <button type="button" (click)="formData.userType = 'employer'"
+                    [class]="formData.userType === 'employer' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'"
+                    class="px-6 py-2 rounded-r-full">Contratante</button>
+          </div>
 
-        <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-            <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-                <div class="flex justify-center mb-6">
-                    <div class="relative rounded-full p-1 bg-gray-200">
-                        <button (click)="userType = 'freelancer'"
-                                [ngClass]="{'bg-indigo-600 text-white': userType === 'freelancer', 'bg-gray-200 text-gray-500': userType !== 'freelancer'}"
-                                class="relative rounded-full py-2 px-6 text-sm font-medium focus:outline-none transition-colors duration-300">
-                            Freelancer
-                        </button>
-                        <button (click)="userType = 'employer'"
-                                [ngClass]="{'bg-indigo-600 text-white': userType === 'employer', 'bg-gray-200 text-gray-500': userType !== 'employer'}"
-                                class="relative rounded-full py-2 px-6 text-sm font-medium focus:outline-none transition-colors duration-300">
-                            Empregador
-                        </button>
-                    </div>
-                </div>
+          <form (ngSubmit)="onSubmit()" class="space-y-4">
+            @if (formData.userType === 'freelancer') {
+              <div>
+                <label class="block text-sm font-medium mb-1">Nome</label>
+                <input type="text" [(ngModel)]="formData.name" name="name" required
+                       class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+              </div>
+            } @else {
+              <div>
+                <label class="block text-sm font-medium mb-1">Nome da Empresa</label>
+                <input type="text" [(ngModel)]="formData.companyName" name="companyName" required
+                       class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+              </div>
+            }
 
-                <form class="space-y-6" action="#" method="POST">
-                    @if (userType === 'freelancer') {
-                        <div>
-                            <label for="name" class="block text-sm font-medium text-gray-700">
-                                Nome
-                            </label>
-                            <div class="mt-1">
-                                <input id="name" name="name" type="text" autocomplete="name" required
-                                       class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            </div>
-                        </div>
-                    }
-
-                    @if (userType === 'employer') {
-                        <div>
-                            <label for="company-name" class="block text-sm font-medium text-gray-700">
-                                Nome da Empresa
-                            </label>
-                            <div class="mt-1">
-                                <input id="company-name" name="company-name" type="text" autocomplete="organization" required
-                                       class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            </div>
-                        </div>
-                    }
-
-                    <div>
-                        <label for="email" class="block text-sm font-medium text-gray-700">
-                            Endereço de email
-                        </label>
-                        <div class="mt-1">
-                            <input id="email" name="email" type="email" autocomplete="email" required
-                                   class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="password" class="block text-sm font-medium text-gray-700">
-                            Senha
-                        </label>
-                        <div class="mt-1">
-                            <input id="password" name="password" type="password" autocomplete="new-password"
-                                   required
-                                   class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="password-confirm" class="block text-sm font-medium text-gray-700">
-                            Confirme a senha
-                        </label>
-                        <div class="mt-1">
-                            <input id="password-confirm" name="password-confirm" type="password"
-                                   autocomplete="new-password" required
-                                   class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        </div>
-                    </div>
-
-                    <div>
-                        <button type="submit"
-                                class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            Registrar
-                        </button>
-                    </div>
-                </form>
+            <div>
+              <label class="block text-sm font-medium mb-1">Email</label>
+              <input type="email" [(ngModel)]="formData.email" name="email" required
+                     class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
             </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-1">Telefone</label>
+              <input type="tel" [(ngModel)]="formData.phone" name="phone"
+                     class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-1">Senha (mínimo 6 caracteres)</label>
+              <input type="password" [(ngModel)]="formData.password" name="password" required minlength="6"
+                     class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+              @if (formData.password && formData.password.length < 6) {
+                <p class="text-red-500 text-xs mt-1">A senha deve ter no mínimo 6 caracteres</p>
+              }
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-1">Confirmar Senha</label>
+              <input type="password" [(ngModel)]="formData.passwordConfirm" name="passwordConfirm" required
+                     class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+
+            <button type="submit" [disabled]="isLoading"
+                    class="w-full py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50">
+              {{ isLoading ? 'Registrando...' : 'Registrar' }}
+            </button>
+
+            <p class="text-center text-sm">
+              Já tem conta? <a routerLink="/login" class="text-indigo-600 hover:text-indigo-700">Fazer login</a>
+            </p>
+          </form>
         </div>
+      </div>
     </div>
     <app-footer></app-footer>
-  `,
+  `
 })
 export class RegisterComponent {
-  userType: 'freelancer' | 'employer' = 'freelancer';
+  formData: RegisterRequest = {
+    email: '',
+    password: '',
+    passwordConfirm: '',
+    userType: 'freelancer',
+    name: '',
+    companyName: '',
+    phone: '',
+    document: ''
+  };
+  
+  isLoading = false;
+  errorMessage = '';
+  successMessage = '';
+
+  constructor(private authService: AuthService, private router: Router) {}
+
+  onSubmit(): void {
+    this.errorMessage = '';
+    this.successMessage = '';
+    
+    console.log('📝 Dados do formulário:', this.formData);
+    
+    // Validar senha mínima
+    if (this.formData.password.length < 6) {
+      this.errorMessage = 'A senha deve ter no mínimo 6 caracteres';
+      return;
+    }
+    
+    // Validar senhas coincidem
+    if (this.formData.password !== this.formData.passwordConfirm) {
+      this.errorMessage = 'As senhas não coincidem';
+      return;
+    }
+
+    this.isLoading = true;
+    console.log('🔄 Enviando requisição para o backend...');
+    
+    this.authService.register(this.formData).subscribe({
+      next: (response) => {
+        this.isLoading = false;
+        console.log('✅ Resposta do backend:', response);
+        this.successMessage = '✅ Conta criada com sucesso! Redirecionando...';
+        
+        setTimeout(() => {
+          this.router.navigate(['/']);
+        }, 2000);
+      },
+      error: (error) => {
+        this.isLoading = false;
+        console.error('❌ Erro completo:', error);
+        console.error('❌ Status:', error.status);
+        console.error('❌ Error.error:', error.error);
+        
+        // Extrair mensagem de erro do backend
+        if (error.error?.errors && error.error.errors.length > 0) {
+          this.errorMessage = error.error.errors.map((e: any) => e.msg).join(', ');
+        } else {
+          this.errorMessage = error.error?.error || error.error?.message || 'Erro ao registrar. Tente novamente.';
+        }
+      }
+    });
+  }
 }

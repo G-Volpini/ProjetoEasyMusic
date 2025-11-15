@@ -1,6 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { AuthService } from '../services/auth.service';
+import { User } from '../models/user.model';
 
 @Component({
   selector: 'app-header',
@@ -33,15 +35,59 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 
         <!-- Right actions -->
         <div class="flex items-center gap-3">
-          <button class="hidden md:block px-5 py-1.5 bg-gradient-purple text-white text-sm rounded-full hover:opacity-90 transition-opacity">
-            Experimente grátis
-          </button>
-          <a [routerLink]="['/login']" class="px-5 py-2 bg-blue-bg text-primary text-sm rounded-full border border-blue-light hover:bg-blue-light transition-colors">
-            Fazer logon
-          </a>
+          @if (!isLoggedIn) {
+            <!-- Não logado -->
+            <a [routerLink]="['/hire-freelancers']" 
+                    class="hidden md:block px-5 py-1.5 bg-gradient-purple text-white text-sm rounded-full hover:opacity-90 transition-opacity">
+              Buscar Freelancers
+            </a>
+            <a [routerLink]="['/login']" class="px-5 py-2 bg-blue-bg text-primary text-sm rounded-full border border-blue-light hover:bg-blue-light transition-colors">
+              Fazer logon
+            </a>
+          } @else {
+            <!-- Logado -->
+            @if (currentUser?.userType === 'freelancer') {
+              <a [routerLink]="['/find-jobs']" 
+                      class="hidden md:block px-5 py-1.5 bg-gradient-purple text-white text-sm rounded-full hover:opacity-90 transition-opacity">
+                Buscar Trabalhos
+              </a>
+            } @else {
+              <a [routerLink]="['/hire-freelancers']" 
+                      class="hidden md:block px-5 py-1.5 bg-gradient-purple text-white text-sm rounded-full hover:opacity-90 transition-opacity">
+                Contratar Freelancer
+              </a>
+            }
+            <span class="hidden md:block text-sm text-gray-600">
+              Olá, <span class="font-semibold text-dark">{{ currentUser?.name }}</span>
+            </span>
+            <a [routerLink]="['/profile/manage']" 
+                    class="px-5 py-2 bg-blue-bg text-primary text-sm rounded-full border border-blue-light hover:bg-blue-light transition-colors">
+              Perfil
+            </a>
+            <button (click)="logout()" 
+                    class="px-5 py-2 text-gray-600 text-sm rounded-full border border-gray-300 hover:bg-gray-50 transition-colors">
+              Sair
+            </button>
+          }
         </div>
       </div>
     </header>
   `,
 })
-export class HeaderComponent {}
+export class HeaderComponent implements OnInit {
+  isLoggedIn = false;
+  currentUser: User | null = null;
+
+  constructor(private authService: AuthService) {}
+
+  ngOnInit(): void {
+    this.authService.currentUser$.subscribe(user => {
+      this.currentUser = user;
+      this.isLoggedIn = !!user;
+    });
+  }
+
+  logout(): void {
+    this.authService.logout();
+  }
+}

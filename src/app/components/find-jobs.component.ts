@@ -1,17 +1,24 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { HeaderComponent } from './header.component';
 import { FooterComponent } from './footer.component';
+import { ProjectService } from '../services/project.service';
+import { AuthService } from '../services/auth.service';
+import { Project } from '../models/project.model';
 
 @Component({
     selector: 'app-find-jobs',
     standalone: true,
     imports: [
+        CommonModule,
+        FormsModule,
         HeaderComponent,
         FooterComponent
     ],
     template: `
     <div class="min-h-screen bg-white">
-        <!-- Header -->
         <app-header></app-header>
 
         <!-- Hero Banner -->
@@ -19,257 +26,677 @@ import { FooterComponent } from './footer.component';
             style="background-image: url('https://api.builder.io/api/v1/image/assets/TEMP/f31223594b21f6311fb7d33ac566b1e0d99252ce?width=3720')">
             <div class="absolute inset-0 bg-black bg-opacity-45"></div>
             <div class="relative z-10 h-full flex flex-col items-center justify-center text-white px-4">
-                <h1 class="text-5xl md:text-[65px] font-normal tracking-tight mb-4">Trabalhadores Ativos</h1>
-                <p class="text-xl md:text-[22px] font-normal">Explore e encontre o Produtor que você precisa!</p>
+                <h1 class="text-5xl md:text-[65px] font-normal tracking-tight mb-4">Trabalhos Disponíveis</h1>
+                <p class="text-xl md:text-[22px] font-normal">
+                    @if (isLoggedIn()) {
+                        Encontre oportunidades musicais perfeitas para você!
+                    } @else {
+                        Faça login para publicar e se candidatar a trabalhos
+                    }
+                </p>
             </div>
         </section>
+
+        <!-- Modal Novo Projeto -->
+        @if (showNewJobModal) {
+            <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" (click)="closeModal($event)">
+                <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+                    <div class="p-6 border-b">
+                        <h2 class="text-2xl font-bold">Publicar Novo Trabalho</h2>
+                    </div>
+                    
+                    <form (ngSubmit)="onSubmitJob()" class="p-6 space-y-4">
+                        @if (jobError) {
+                            <div class="p-3 bg-red-100 text-red-700 rounded">{{ jobError }}</div>
+                        }
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Título *</label>
+                            <input type="text" [(ngModel)]="newJob.title" name="title" required
+                                   class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Descrição *</label>
+                            <textarea [(ngModel)]="newJob.description" name="description" rows="4" required
+                                      class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">URL da Imagem (opcional)</label>
+                            <input type="url" [(ngModel)]="newJob.imageUrl" name="imageUrl" placeholder="https://exemplo.com/imagem.jpg"
+                                   class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                            <p class="text-xs text-gray-500 mt-1">Se não informar, será usada uma imagem padrão</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Telefone para Contato *</label>
+                            <input type="tel" [(ngModel)]="newJob.contactPhone" name="contactPhone" required placeholder="(15) 98765-4321"
+                                   class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Gênero Musical *</label>
+                                <select [(ngModel)]="newJob.musicalGenre" name="musicalGenre" required
+                                        class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">Selecione...</option>
+                                    <option value="Pop">Pop</option>
+                                    <option value="Rock">Rock</option>
+                                    <option value="Jazz">Jazz</option>
+                                    <option value="Sertanejo">Sertanejo</option>
+                                    <option value="MPB">MPB</option>
+                                    <option value="Eletrônica">Eletrônica</option>
+                                    <option value="Hip Hop">Hip Hop</option>
+                                    <option value="Clássica">Clássica</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Tipo de Projeto *</label>
+                                <select [(ngModel)]="newJob.projectType" name="projectType" required
+                                        class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">Selecione...</option>
+                                    <option value="Gravação">Gravação</option>
+                                    <option value="Show ao vivo">Show ao vivo</option>
+                                    <option value="Produção">Produção</option>
+                                    <option value="Mixagem">Mixagem</option>
+                                    <option value="Composição">Composição</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Orçamento Mínimo (R$)</label>
+                                <input type="number" [(ngModel)]="newJob.budget.min" name="budgetMin" min="0"
+                                       class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Orçamento Máximo (R$)</label>
+                                <input type="number" [(ngModel)]="newJob.budget.max" name="budgetMax" min="0"
+                                       class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Cidade</label>
+                                <input type="text" [(ngModel)]="newJob.location.city" name="city"
+                                       class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Estado</label>
+                                <input type="text" [(ngModel)]="newJob.location.state" name="state"
+                                       class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Duração</label>
+                            <input type="text" [(ngModel)]="newJob.duration" name="duration" placeholder="Ex: 3 meses"
+                                   class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Prazo</label>
+                            <input type="date" [(ngModel)]="newJob.deadline" name="deadline"
+                                   class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+
+                        <div class="flex gap-3 pt-4">
+                            <button type="button" (click)="closeNewJobModal()" 
+                                    class="flex-1 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
+                                Cancelar
+                            </button>
+                            <button type="submit" [disabled]="isSubmitting"
+                                    class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50">
+                                {{ isSubmitting ? 'Publicando...' : 'Publicar Trabalho' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        }
 
         <!-- Main Content -->
         <div class="flex">
             <!-- Sidebar -->
-            <aside class="w-[330px] border-r border-gray-91 p-6 flex-shrink-0">
-                <button
-                    class="w-full bg-primary text-white rounded-full px-5 py-2 flex items-center justify-center gap-2 mb-5">
-                    <svg class="w-4 h-4" viewBox="0 0 18 18" fill="none">
-                        <path
-                            d="M9 1C7.41775 1 5.87103 1.46919 4.55544 2.34824C3.23985 3.22729 2.21447 4.47672 1.60897 5.93853C1.00347 7.40034 0.84504 9.00887 1.15372 10.5607C1.4624 12.1126 2.22433 13.538 3.34315 14.6569C4.46197 15.7757 5.88743 16.5376 7.43928 16.8463C8.99113 17.155 10.5997 16.9965 12.0615 16.391C13.5233 15.7855 14.7727 14.7602 15.6518 13.4446C16.5308 12.129 17 10.5823 17 9C17 6.87827 16.1571 4.84344 14.6569 3.34315C13.1566 1.84285 11.1217 1 9 1ZM14 9.5C14 9.63261 13.9473 9.75979 13.8536 9.85355C13.7598 9.94732 13.6326 10 13.5 10H10V13.5C10 13.6326 9.94733 13.7598 9.85356 13.8536C9.75979 13.9473 9.63261 14 9.5 14H8.5C8.3674 14 8.24022 13.9473 8.14645 13.8536C8.05268 13.7598 8 13.6326 8 13.5V10H4.5C4.3674 10 4.24022 9.94732 4.14645 9.85355C4.05268 9.75979 4 9.63261 4 9.5V8.5C4 8.36739 4.05268 8.24021 4.14645 8.14645C4.24022 8.05268 4.3674 8 4.5 8H8V4.5C8 4.36739 8.05268 4.24021 8.14645 4.14645C8.24022 4.05268 8.3674 4 8.5 4H9.5C9.63261 4 9.75979 4.05268 9.85356 4.14645C9.94733 4.24021 10 4.36739 10 4.5V8H13.5C13.6326 8 13.7598 8.05268 13.8536 8.14645C13.9473 8.24021 14 8.36739 14 8.5V9.5Z"
-                            fill="white" />
-                    </svg>
-                    <span class="text-sm">Novo trabalho</span>
-                </button>
-
-                <div class="border-t border-gray-91 pt-5">
-                    <button class="w-full flex items-center justify-between px-2.5 py-2 mb-4">
-                        <div class="flex items-center gap-2">
-                            <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none">
-                                <path
-                                    d="M5.85234 0.522461H1.19938C0.832269 0.522461 0.534668 0.820062 0.534668 1.18717V5.84014C0.534668 6.20725 0.832269 6.50485 1.19938 6.50485H5.85234C6.21945 6.50485 6.51705 6.20725 6.51705 5.84014V1.18717C6.51705 0.820062 6.21945 0.522461 5.85234 0.522461Z"
-                                    stroke="#707070" stroke-linecap="round" stroke-linejoin="round" />
-                                <path
-                                    d="M12.4995 6.50485C14.1515 6.50485 15.4907 5.16564 15.4907 3.51365C15.4907 1.86166 14.1515 0.522461 12.4995 0.522461C10.8475 0.522461 9.5083 1.86166 9.5083 3.51365C9.5083 5.16564 10.8475 6.50485 12.4995 6.50485Z"
-                                    stroke="#707070" stroke-linecap="round" stroke-linejoin="round" />
-                                <path
-                                    d="M12.5236 9.31436L8.59646 14.5035C8.54195 14.6028 8.513 14.7141 8.51222 14.8273C8.51145 14.9406 8.53888 15.0523 8.59203 15.1523C8.64205 15.2494 8.71756 15.331 8.81046 15.3885C8.90336 15.446 9.01014 15.477 9.11937 15.4784H14.8846C14.9938 15.477 15.1006 15.446 15.1935 15.3885C15.2864 15.331 15.3619 15.2494 15.4119 15.1523C15.4651 15.0523 15.4925 14.9406 15.4918 14.8273C15.491 14.7141 15.462 14.6028 15.4075 14.5035L12.5236 9.31436Z"
-                                    stroke="#707070" stroke-linecap="round" stroke-linejoin="round" />
-                                <path
-                                    d="M3.92537 8.68775L0.662092 11.6337C0.579759 11.7325 0.534668 11.857 0.534668 11.9856C0.534668 12.1142 0.579759 12.2387 0.662092 12.3374L3.12683 15.287C3.37601 15.3458 3.92449 15.287L6.38923 12.3428C6.47156 12.244 6.51665 12.1195 6.51665 11.9909C6.51665 11.8623 6.47156 11.7378 6.38923 11.6391L3.92537 8.68775Z"
-                                    stroke="#707070" stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
-                            <span class="text-sm text-gray-10">Categorias</span>
-                        </div>
-                        <svg class="w-2.5 h-2.5" viewBox="0 0 10 10" fill="none">
+            <aside class="w-[330px] border-r border-gray-200 p-6 flex-shrink-0">
+                @if (isLoggedIn()) {
+                    <button (click)="openNewJobModal()"
+                        class="w-full bg-indigo-600 text-white rounded-full px-5 py-2 flex items-center justify-center gap-2 mb-5 hover:bg-indigo-700 transition-colors">
+                        <svg class="w-4 h-4" viewBox="0 0 18 18" fill="none">
                             <path
-                                d="M0.00545938 7.02683C-0.00181979 6.96495 -0.00181979 6.90242 0.00545938 6.84054L0.079975 6.6617C0.0991197 6.60101 0.126713 6.54332 0.161942 6.49032C0.198591 6.43616 0.241071 6.38618 0.288619 6.34129L4.32737 2.30254C4.42158 2.21534 4.52993 2.14478 4.64778 2.09389C4.76027 2.04363 4.88226 2.01822 5.00546 2.01938C5.13114 2.01737 5.25574 2.0428 5.37059 2.09389C5.48718 2.14299 5.59339 2.21379 5.68355 2.30254L9.69249 6.34129C9.78358 6.43392 9.85684 6.54254 9.90859 6.6617C9.953 6.77572 9.97574 6.89702 9.97565 7.01938C9.9758 7.14416 9.95307 7.26792 9.90859 7.38451C9.86209 7.50433 9.78807 7.61153 9.69249 7.69747C9.60233 7.78622 9.49613 7.85702 9.37953 7.90612C9.26225 7.9583 9.13531 7.98526 9.00695 7.98526C8.87858 7.98526 8.75165 7.9583 8.63437 7.90612C8.51777 7.85702 8.41157 7.78622 8.32141 7.69747L5.01291 4.32936L1.6299 7.69747C1.53974 7.78622 1.43353 7.85702 1.31693 7.90612C1.19965 7.9583 1.07272 7.98526 0.944357 7.98526C0.815992 7.98526 0.689059 7.9583 0.571778 7.90612C0.46579 7.85387 0.369916 7.78323 0.288619 7.69747L0.161942 7.54844C0.124435 7.49951 0.0966151 7.44387 0.079975 7.38451L0.00545938 7.23547C-0.00172006 7.17608 -0.00172006 7.11603 0.00545938 7.05664V7.02683Z"
-                                fill="#474747" />
+                                d="M9 1C7.41775 1 5.87103 1.46919 4.55544 2.34824C3.23985 3.22729 2.21447 4.47672 1.60897 5.93853C1.00347 7.40034 0.84504 9.00887 1.15372 10.5607C1.4624 12.1126 2.22433 13.538 3.34315 14.6569C4.46197 15.7757 5.88743 16.5376 7.43928 16.8463C8.99113 17.155 10.5997 16.9965 12.0615 16.391C13.5233 15.7855 14.7727 14.7602 15.6518 13.4446C16.5308 12.129 17 10.5823 17 9C17 6.87827 16.1571 4.84344 14.6569 3.34315C13.1566 1.84285 11.1217 1 9 1ZM14 9.5C14 9.63261 13.9473 9.75979 13.8536 9.85355C13.7598 9.94732 13.6326 10 13.5 10H10V13.5C10 13.6326 9.94733 13.7598 9.85356 13.8536C9.75979 13.9473 9.63261 14 9.5 14H8.5C8.3674 14 8.24022 13.9473 8.14645 13.8536C8.05268 13.7598 8 13.6326 8 13.5V10H4.5C4.3674 10 4.24022 9.94732 4.14645 9.85355C4.05268 9.75979 4 9.63261 4 9.5V8.5C4 8.36739 4.05268 8.24021 4.14645 8.14645C4.24022 8.05268 4.3674 8 4.5 8H8V4.5C8 4.36739 8.05268 4.24021 8.14645 4.14645C8.24022 4.05268 8.3674 4 8.5 4H9.5C9.63261 4 9.75979 4.05268 9.85356 4.14645C9.94733 4.24021 10 4.36739 10 4.5V8H13.5C13.6326 8 13.7598 8.05268 13.8536 8.14645C13.9473 8.24021 14 8.36739 14 8.5V9.5Z"
+                                fill="white" />
                         </svg>
+                        <span class="text-sm">Publicar Trabalho</span>
                     </button>
+                } @else {
+                    <button (click)="goToLogin()"
+                        class="w-full bg-gray-600 text-white rounded-full px-5 py-2 flex items-center justify-center gap-2 mb-5 hover:bg-gray-700 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                        <span class="text-sm">Login para Publicar</span>
+                    </button>
+                }
 
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <div class="relative">
-                                <input type="radio" name="category" checked class="sr-only peer">
-                                <div class="w-4 h-4 rounded-full border border-primary peer-checked:border-primary"></div>
-                                <div
-                                    class="w-2.5 h-2.5 rounded-full bg-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 peer-checked:block hidden">
-                                </div>
-                            </div>
-                            <span class="text-sm text-gray-10">Tudo</span>
-                        </label>
-
-                        <div class="mt-5">
-                            <p class="text-xs text-gray-44 uppercase mb-3">Popular</p>
-                            <div class="space-y-3">
-                                @for (category of ['Cantor Sertanejo', 'Cantor Sertanejo', 'Cantor Sertanejo', 'Cantor
-                                Sertanejo', 'Cantor Sertanejo', 'Cantor Sertanejo', 'Cantor Sertanejo', 'Cantor Sertanejo',
-                                'Cantor Sertanejo', 'Cantor Sertanejo']; track category) {
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <div class="relative">
-                                        <input type="radio" name="category" class="sr-only peer">
-                                        <div class="w-4 h-4 rounded-full border border-gray-56"></div>
-                                    </div>
-                                    <span class="text-sm text-gray-10">{{ category }}</span>
-                                </label>
-                                }
-                            </div>
-                        </div>
-
-                        <button class="text-sm text-primary mt-4">Ver todas as categorias</button>
+                <!-- Filtros -->
+                <div class="border-t border-gray-200 pt-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold">Filtrar por</h3>
+                        @if (hasActiveFilters()) {
+                            <button (click)="clearFilters()" 
+                                    class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                                Limpar tudo
+                            </button>
+                        }
                     </div>
-                </div>
-
-                <div class="border-t border-gray-91 pt-5 mt-5">
-                    <button class="w-full flex items-center justify-between px-2.5 py-2">
-                        <div class="flex items-center gap-2">
-                            <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none">
-                                <path
-                                    d="M8.00049 7.00085C9.10506 7.00085 10.0005 6.10542 10.0005 5.00085C10.0005 3.89628 9.10506 3.00085 8.00049 3.00085C6.89592 3.00085 6.00049 3.89628 6.00049 5.00085C6.00049 6.10542 6.89592 7.00085 8.00049 7.00085Z"
-                                    stroke="#707070" stroke-linecap="round" stroke-linejoin="round" />
-                                <path
-                                    d="M8.00053 0.500427C9.19412 0.500427 10.3388 0.97458 11.1828 1.81858C12.0268 2.66257 12.501 3.80728 12.501 5.00087C12.501 7.16798 9.07964 12.0231 8.2032 13.2258C8.17983 13.2575 8.1493 13.2834 8.1141 13.3012C8.07889 13.319 8.03999 13.3283 8.00053 13.3283C7.96108 13.3283 7.92217 13.319 7.88697 13.3012C7.85176 13.2834 7.82124 13.2575 7.79787 13.2258C6.92142 12.0178 3.50098 7.16709 3.50098 4.99998C3.50121 3.8067 3.97535 2.66236 4.81913 1.81858C5.66291 0.974798 6.80725 0.500663 8.00053 0.500427Z"
-                                    stroke="#707070" stroke-linecap="round" stroke-linejoin="round" />
-                                <path
-                                    d="M11.9863 11.856C13.8076 12.2168 15.0005 12.8186 15.0005 13.4995C15.0005 14.6044 11.8672 15.4995 8.00049 15.4995C4.13382 15.4995 1.00049 14.6044 1.00049 13.4995C1.00049 12.8195 2.18804 12.2186 4.00049 11.8577"
-                                    stroke="#707070" stroke-linecap="round" stroke-linejoin="round" />
+                    
+                    <!-- Busca -->
+                    <div class="mb-4">
+                        <div class="relative">
+                            <input type="text" 
+                                   [(ngModel)]="searchTerm" 
+                                   (input)="applyFilters()" 
+                                   placeholder="Buscar trabalhos..."
+                                   class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                             </svg>
-                            <span class="text-sm text-gray-10">Localização</span>
                         </div>
-                        <svg class="w-2.5 h-2.5" viewBox="0 0 10 10" fill="none">
-                            <path
-                                d="M9.99991 2.9732C10.0072 3.03508 10.0072 3.09761 9.99991 3.15949L9.9254 3.33833C9.90625 3.39902 9.87866 3.45671 9.84343 3.50971C9.80678 3.56387 9.7643 3.61385 9.71675 3.65874L5.678 7.69749C5.58379 7.7847 5.47544 7.85525 5.35759 7.90614C5.2451 7.9564 5.12311 7.98181 4.99991 7.98065C4.87423 7.98266 4.74963 7.95723 4.63479 7.90614C4.51819 7.85704 4.41198 7.78624 4.32182 7.69749L0.312878 3.65874C0.221786 3.56611 0.148533 3.45749 0.0967827 3.33833C0.0523758 3.22431 0.0296316 3.10301 0.0297184 2.98065C0.0295696 2.85587 0.0523005 2.73211 0.0967827 2.61552C0.143281 2.4957 0.217305 2.3885 0.312878 2.30256C0.40304 2.21381 0.509246 2.14301 0.625844 2.09391C0.743124 2.04173 0.870057 2.01477 0.998422 2.01477C1.12679 2.01477 1.25372 2.04173 1.371 2.09391C1.4876 2.14301 1.5938 2.21381 1.68397 2.30256L4.99246 5.67067L8.37547 2.30256C8.46563 2.21381 8.57184 2.14301 8.68844 2.09391C8.80572 2.04173 8.93265 2.01477 9.06101 2.01477C9.18938 2.01477 9.31631 2.04173 9.43359 2.09391C9.53958 2.14616 9.63546 2.2168 9.71675 2.30256L9.84343 2.45159C9.88094 2.50052 9.90876 2.55616 9.9254 2.61552L9.99991 2.76456C10.0071 2.82395 10.0071 2.884 9.99991 2.94339V2.9732Z"
-                                fill="#474747" />
-                        </svg>
-                    </button>
+                    </div>
+
+                    <!-- Gênero -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">Gênero Musical</label>
+                        <select [(ngModel)]="selectedGenre" (change)="applyFilters()"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                            <option value="">Todos</option>
+                            <option value="Pop">Pop</option>
+                            <option value="Rock">Rock</option>
+                            <option value="Jazz">Jazz</option>
+                            <option value="Sertanejo">Sertanejo</option>
+                            <option value="MPB">MPB</option>
+                            <option value="Eletrônica">Eletrônica</option>
+                            <option value="Hip Hop">Hip Hop</option>
+                            <option value="Clássica">Clássica</option>
+                        </select>
+                    </div>
+
+                    <!-- Tipo -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">Tipo de Projeto</label>
+                        <select [(ngModel)]="selectedType" (change)="applyFilters()"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                            <option value="">Todos</option>
+                            <option value="Gravação">Gravação</option>
+                            <option value="Show ao vivo">Show ao vivo</option>
+                            <option value="Produção">Produção</option>
+                            <option value="Mixagem">Mixagem</option>
+                            <option value="Composição">Composição</option>
+                        </select>
+                    </div>
+
+                    <!-- Cidade -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">Cidade</label>
+                        <div class="relative">
+                            <input type="text" 
+                                   [(ngModel)]="selectedCity" 
+                                   (input)="applyFilters()" 
+                                   placeholder="Qualquer cidade"
+                                   class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Botão Aplicar Filtros -->
+                    @if (hasActiveFilters()) {
+                        <div class="mt-4 p-3 bg-indigo-50 rounded-md">
+                            <p class="text-xs text-indigo-900 font-medium">
+                                {{ getActiveFiltersCount() }} filtro(s) ativo(s)
+                            </p>
+                        </div>
+                    }
                 </div>
             </aside>
 
-            <!-- Main Content Area -->
-            <main class="flex-1 bg-gradient-white">
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-3">
-                        <h2 class="text-base text-gray-10">Seus trabalhos freelance recomendados</h2>
-                        <div class="flex gap-1.5">
-                            <button
-                                class="w-8 h-8 rounded-full border border-gray-91 bg-white opacity-30 flex items-center justify-center">
-                                <svg class="w-2 h-3" viewBox="0 0 7 12" fill="none">
-                                    <path
-                                        d="M5.87573 0C5.80193 0.000681741 5.72845 0.00918172 5.65644 0.0253625C5.58572 0.0418583 5.51596 0.0623048 5.44753 0.0865605C5.37983 0.111341 5.31529 0.14389 5.2551 0.183548C5.18847 0.226174 5.12683 0.276194 5.0715 0.332718L0.332764 5.07155C0.231385 5.18281 0.148742 5.30977 0.0880631 5.44753C0.0300637 5.5797 5.79676e-05 5.72247 0 5.8668C0.000388203 6.014 0.0303549 6.1596 0.0880631 6.29501C0.144883 6.4326 0.228004 6.5578 0.332764 6.66356L5.0715 11.4009C5.17776 11.5108 5.30587 11.5971 5.44753 11.6545C5.58105 11.7071 5.72331 11.7339 5.8668 11.7336C6.01313 11.7331 6.15815 11.7063 6.29501 11.6545C6.4363 11.6013 6.5624 11.5143 6.6621 11.4009C6.76715 11.2959 6.85033 11.1712 6.9068 11.0338C6.96474 10.9017 6.99459 10.7589 6.99459 10.6146C6.99459 10.4702 6.96474 10.3275 6.9068 10.1953C6.85033 10.0579 6.76715 9.93318 6.6621 9.82823L2.7111 5.87577L6.6621 1.90688C6.76715 1.80193 6.85033 1.67716 6.9068 1.53983C6.96495 1.40744 6.99496 1.26442 6.99496 1.11982C6.99496 0.975222 6.96495 0.832161 6.9068 0.699769C6.84958 0.562833 6.7665 0.438208 6.6621 0.332718C6.60852 0.277836 6.55008 0.227934 6.48753 0.183548C6.42853 0.141851 6.36362 0.109161 6.29501 0.0865605C6.22488 0.0641795 6.15477 0.0432673 6.08464 0.0253625C6.01623 0.00884663 5.94611 0.000337098 5.87573 0Z"
-                                        fill="#191919" />
-                                </svg>
-                            </button>
-                            <button
-                                class="w-8 h-8 rounded-full border border-gray-91 bg-white flex items-center justify-center">
-                                <svg class="w-2 h-3" viewBox="0 0 7 12" fill="none">
-                                    <path
-                                        d="M1.12818 11.7515C1.20198 11.7508 1.27546 11.7423 1.34747 11.7261C1.41818 11.7096 1.48794 11.6892 1.55638 11.6649C1.62407 11.6402 1.68861 11.6076 1.74881 11.5679C1.81544 11.5253 1.87707 11.4753 1.9324 11.4188L6.67114 6.67995C6.77252 6.56868 6.85516 6.44172 6.91584 6.30397C6.97384 6.1718 7.00385 6.02903 7.00391 5.88469C7.00352 5.7375 6.97355 5.5919 6.91584 5.45649C6.85902 5.3189 6.7759 5.1937 6.67114 5.08793L1.9324 0.350606C1.82614 0.240745 1.69804 0.154367 1.55638 0.0969801C1.42286 0.0444336 1.28059 0.0175886 1.1371 0.0178871C0.990778 0.0183964 0.845754 0.0451946 0.708899 0.0969801C0.567602 0.150155 0.441503 0.237238 0.341803 0.350606C0.236752 0.455557 0.153576 0.58032 0.0971022 0.717656C0.0391655 0.849842 0.00931215 0.99261 0.00931215 1.13694C0.00931215 1.28126 0.0391655 1.42403 0.0971022 1.55621C0.153576 1.69355 0.236752 1.81831 0.341803 1.92326L4.2928 5.87572L0.341803 9.84462C0.236752 9.94957 0.153576 10.0743 0.0971022 10.2117C0.0389524 10.3441 0.00894785 10.4871 0.00894785 10.6317C0.00894785 10.7763 0.0389524 10.9193 0.0971022 11.0517C0.154325 11.1887 0.23741 11.3133 0.341803 11.4188C0.395389 11.4737 0.453823 11.5236 0.51638 11.5679C0.575373 11.6096 0.640285 11.6423 0.708899 11.6649C0.779026 11.6873 0.84914 11.7082 0.919267 11.7261C0.987679 11.7426 1.0578 11.7512 1.12818 11.7515Z"
-                                        fill="#191919" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
-                        <!-- Premium Card -->
-                        <div class="rounded-md bg-[rgba(0,87,255,0.05)] p-6 relative">
-                            <div
-                                class="inline-block bg-gradient-primary text-white text-xs uppercase px-3 py-0.5 rounded mb-3">
-                                Pro</div>
-                            <h3 class="text-lg text-gray-10 mb-5">Assine o EasyMusic Pro para desbloquear</h3>
-                            <div class="space-y-2.5 mb-6">
-                                <div class="flex items-center gap-2.5">
-                                    <svg class="w-4 h-4" viewBox="0 0 18 18" fill="none">
-                                        <path
-                                            d="M9 0C7.21997 0 5.47991 0.52784 3.99987 1.51677C2.51983 2.50571 1.36628 3.91131 0.685088 5.55585C0.00389951 7.20038 -0.17433 9.00998 0.172937 10.7558C0.520203 12.5016 1.37737 14.1053 2.63604 15.364C3.89472 16.6226 5.49836 17.4798 7.24419 17.8271C8.99002 18.1743 10.7996 17.9961 12.4442 17.3149C14.0887 16.6337 15.4943 15.4802 16.4832 14.0001C17.4722 12.5201 18 10.78 18 9C17.9947 6.61468 17.0448 4.32856 15.3581 2.64187C13.6714 0.955191 11.3853 0.00528313 9 0ZM13.572 7.564L8.593 12.3C8.40861 12.4655 8.17072 12.5588 7.923 12.563C7.79789 12.5619 7.67424 12.536 7.55922 12.4867C7.44421 12.4374 7.34012 12.3658 7.253 12.276L4.429 9.428C4.25769 9.24521 4.16417 9.00296 4.16823 8.75247C4.17229 8.50198 4.2736 8.26289 4.45075 8.08574C4.62789 7.9086 4.86699 7.80729 5.11748 7.80323C5.36796 7.79917 5.61021 7.89269 5.793 8.064L7.971 10.242L12.256 6.173C12.4415 5.99806 12.688 5.90263 12.9429 5.90712C13.1978 5.9116 13.4408 6.01565 13.62 6.197C13.7871 6.38833 13.8752 6.6361 13.8663 6.88999C13.8574 7.14388 13.7522 7.38487 13.572 7.564Z"
-                                            fill="#9335FF" />
-                                    </svg>
-                                    <span class="text-sm text-gray-10">Tenha acesso a oportunidades exclusivas</span>
+            <!-- Jobs Grid -->
+            <main class="flex-1 p-6">
+                <!-- Call to Action para usuários não logados -->
+                @if (!isLoggedIn()) {
+                    <div class="mb-8 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl shadow-2xl p-8 md:p-10 text-white animate-gradient">
+                        <div class="flex flex-col md:flex-row items-center justify-between gap-8">
+                            <div class="flex-1 text-center md:text-left space-y-4">
+                                <div class="inline-block">
+                                    <span class="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide">
+                                        🎵 Plataforma #1 do Brasil
+                                    </span>
                                 </div>
-                                <div class="flex items-center gap-2.5">
-                                    <svg class="w-4 h-4" viewBox="0 0 18 18" fill="none">
-                                        <path
-                                            d="M9 0C7.21997 0 5.47991 0.52784 3.99987 1.51677C2.51983 2.50571 1.36628 3.91131 0.685088 5.55585C0.00389951 7.20038 -0.17433 9.00998 0.172937 10.7558C0.520203 12.5016 1.37737 14.1053 2.63604 15.364C3.89472 16.6226 5.49836 17.4798 7.24419 17.8271C8.99002 18.1743 10.7996 17.9961 12.4442 17.3149C14.0887 16.6337 15.4943 15.4802 16.4832 14.0001C17.4722 12.5201 18 10.78 18 9C17.9947 6.61468 17.0448 4.32856 15.3581 2.64187C13.6714 0.955191 11.3853 0.00528313 9 0ZM13.572 7.564L8.593 12.3C8.40861 12.4655 8.17072 12.5588 7.923 12.563C7.79789 12.5619 7.67424 12.536 7.55922 12.4867C7.44421 12.4374 7.34012 12.3658 7.253 12.276L4.429 9.428C4.25769 9.24521 4.16417 9.00296 4.16823 8.75247C4.17229 8.50198 4.2736 8.26289 4.45075 8.08574C4.62789 7.9086 4.86699 7.80729 5.11748 7.80323C5.36796 7.79917 5.61021 7.89269 5.793 8.064L7.971 10.242L12.256 6.173C12.4415 5.99806 12.688 5.90263 12.9429 5.90712C13.1978 5.9116 13.4408 6.01565 13.62 6.197C13.7871 6.38833 13.8752 6.6361 13.8663 6.88999C13.8574 7.14388 13.7522 7.38487 13.572 7.564Z"
-                                            fill="#9335FF" />
-                                    </svg>
-                                    <span class="text-sm text-gray-10">Insights sobre quem viu seu trabalho</span>
-                                </div>
-                                <div class="flex items-start gap-2.5">
-                                    <svg class="w-4 h-4 mt-0.5" viewBox="0 0 16 18" fill="none">
-                                        <path
-                                            d="M7.865 1.13251C6.30945 1.13251 4.78884 1.59378 3.49544 2.458C2.20205 3.32222 1.19397 4.55056 0.598691 5.9877C0.00340774 7.42484 -0.152345 9.00623 0.151127 10.5319C0.4546 12.0576 1.20367 13.459 2.30361 14.5589C3.40355 15.6588 4.80496 16.4079 6.33062 16.7114C7.85628 17.0149 9.43767 16.8591 10.8748 16.2638C12.3119 15.6685 13.5403 14.6605 14.4045 13.3671C15.2687 12.0737 15.73 10.5531 15.73 8.99751C15.7254 6.913 14.8953 4.91519 13.4213 3.44121C11.9473 1.96724 9.94951 1.13712 7.865 1.13251ZM11.8604 7.7426L7.50933 11.8813C7.34819 12.0259 7.1403 12.1075 6.92383 12.1112C6.81449 12.1102 6.70643 12.0875 6.60592 12.0445C6.50541 12.0014 6.41445 11.9389 6.33832 11.8604L3.87046 9.37153C3.72075 9.21179 3.63903 9.00009 3.64257 8.78119C3.64612 8.56229 3.73465 8.35336 3.88946 8.19855C4.04427 8.04374 4.25321 7.95521 4.47211 7.95166C4.691 7.94812 4.9027 8.02984 5.06244 8.17955L6.96577 10.0829L10.7104 6.52702C10.8724 6.37415 11.0879 6.29075 11.3107 6.29467C11.5334 6.29859 11.7458 6.38951 11.9024 6.548C12.0484 6.7152 12.1254 6.93172 12.1176 7.15359C12.1098 7.37547 12.0179 7.58606 11.8604 7.7426Z"
-                                            fill="#9335FF" />
-                                    </svg>
-                                    <span class="text-sm text-gray-10">Teste grátis de três meses do LinkedIn Premium</span>
-                                </div>
-                            </div>
-                            <p class="text-xs text-black text-opacity-70 mb-6">+ Estatísticas avançadas, Adobe Portfolio,
-                                personalização de perfil e muito mais…</p>
-                            <button class="px-5 py-2 rounded-full bg-primary text-white text-sm">Assine o Pro</button>
-                        </div>
-
-                        <!-- Locked Worker Cards -->
-                        @for (item of [
-                        {name: 'Michel Telhado', category: 'Cantor Sertanejo', days: '12'},
-                        {name: 'Claudinha Dos Teclados', category: 'Cantor Exclusivo', days: '12'},
-                        {name: 'Gustavo Lima', category: 'Cantor Sertanejo Único', days: '13'}
-                        ]; track item.name) {
-                        <div class="rounded-md border border-gray-91 bg-white p-5 relative overflow-hidden">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-xs text-gray-10 border border-gray-91 rounded px-3 py-1">{{ item.category
-                                    }}</span>
-                                <span class="text-xs text-orange">Termina em {{ item.days }} dias</span>
-                            </div>
-                            <h3 class="text-base text-gray-10 mb-2">{{ item.name }}</h3>
-                            <p class="text-sm mb-2">
-                                <span class="text-xs text-primary align-top">US$</span>
-                                <span class="text-base text-primary">10.000-25.000</span>
-                            </p>
-                            <div class="flex items-center gap-2 mb-3">
-                                <svg class="w-4 h-4" viewBox="0 0 15 15" fill="none">
-                                    <path
-                                        d="M0.512207 7.5C0.512207 8.88201 0.922021 10.233 1.68983 11.3821C2.45763 12.5312 3.54894 13.4268 4.82575 13.9557C6.10257 14.4846 7.50754 14.6229 8.86299 14.3533C10.2185 14.0837 11.4635 13.4182 12.4407 12.441C13.418 11.4637 14.0835 10.2187 14.3531 8.86321C14.6227 7.50775 14.4843 6.10278 13.9555 4.82597C13.4266 3.54916 12.531 2.45784 11.3819 1.69004C10.2328 0.922235 8.8818 0.512421 7.49978 0.512421C5.64656 0.512421 3.86925 1.24861 2.55882 2.55903C1.2484 3.86946 0.512207 5.64678 0.512207 7.5Z"
-                                        stroke="#9335FF" stroke-width="1.02484" stroke-linecap="round"
-                                        stroke-linejoin="round" />
-                                    <path d="M7.5 7.49999V5.00403" stroke="#9335FF" stroke-width="1.02484"
-                                        stroke-linecap="round" stroke-linejoin="round" />
-                                    <path d="M7.5 7.5L10.6193 10.6202" stroke="#9335FF" stroke-width="1.02484"
-                                        stroke-linecap="round" stroke-linejoin="round" />
-                                </svg>
-                                <span class="text-sm text-gray-10">Agora</span>
-                            </div>
-                            <p class="text-sm text-gray-10 leading-relaxed mb-20">Lorem Ipsum is simply dummy text of the
-                                printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text
-                                ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make
-                                a type specimen book.</p>
-                            <div class="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-card pointer-events-none"></div>
-                            <button
-                                class="w-full px-5 py-1.5 rounded-full border border-[#E0EAFF] bg-gray-98 text-primary text-sm flex items-center justify-center gap-2 relative z-10">
-                                <svg class="w-3 h-4" viewBox="0 0 12 15" fill="none">
-                                    <path
-                                        d="M11.5 6H11V5C11 3.67392 10.4732 2.40215 9.53553 1.46447C8.59785 0.526784 7.32608 0 6 0C4.67392 0 3.40215 0.526784 2.46447 1.46447C1.52678 2.40215 1 3.67392 1 5V6H0.5C0.367392 6 0.240215 6.05268 0.146447 6.14645C0.0526785 6.24021 0 6.36739 0 6.5V14.5C0 14.6326 0.0526785 14.7598 0.146447 14.8536C0.240215 14.9473 0.367392 15 0.5 15H11.5C11.6326 15 11.7598 14.9473 11.8536 14.8536C11.9473 14.7598 12 14.6326 12 14.5V6.5C12 6.36739 11.9473 6.24021 11.8536 6.14645C11.7598 6.05268 11.6326 6 11.5 6ZM3 5C3 4.20435 3.31607 3.44129 3.87868 2.87868C4.44129 2.31607 5.20435 2 6 2C6.79565 2 7.55871 2.31607 8.12132 2.87868C8.68393 3.44129 9 4.20435 9 5V6H3V5ZM7 11.111V12.5C7 12.6326 6.94732 12.7598 6.85355 12.8536C6.75979 12.9473 6.63261 13 6.5 13H5.5C5.36739 13 5.24021 12.9473 5.14645 12.8536C5.05268 12.7598 5 12.6326 5 12.5V11.111C4.77357 10.9085 4.61397 10.642 4.54232 10.3468C4.47067 10.0515 4.49034 9.74152 4.59874 9.45773C4.70714 9.17394 4.89915 8.92976 5.14937 8.75748C5.39958 8.58521 5.69621 8.49297 6 8.49297C6.30379 8.49297 6.60042 8.58521 6.85063 8.75748C7.10085 8.92976 7.29286 9.17394 7.40126 9.45773C7.50966 9.74152 7.52933 10.0515 7.45768 10.3468C7.38603 10.642 7.22643 10.9085 7 11.111Z"
-                                        fill="#9335FF" />
-                                </svg>
-                                Desbloquear com EasyMusic Pro
-                            </button>
-                        </div>
-                        }
-                    </div>
-
-                    <!-- Regular Worker Cards -->
-                    <div class="mt-6 space-y-5">
-                        @for (i of [1, 2, 3, 4]; track i) {
-                        <div class="rounded-xl border border-black border-opacity-40 bg-white p-5">
-                            <div class="flex items-start gap-3">
-                                <div class="w-10 h-10 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden">
-                                    <img src="https://api.builder.io/api/v1/image/assets/TEMP/e56d3f05b7e488727b0402375cb2333bba108961?width=130"
-                                        alt="" class="w-full h-full object-cover">
-                                </div>
-                                <div class="flex-1">
-                                    <h4 class="text-base text-gray-10">Dj VinicinDaZl</h4>
-                                    <div class="flex items-center gap-1.5 text-xs text-gray-44">
-                                        <svg class="w-2 h-3" viewBox="0 0 8 13" fill="none">
-                                            <path
-                                                d="M4.00004 0.900391C2.93917 0.900391 1.9218 1.32163 1.17166 2.07177C0.421511 2.82192 0 3.83929 0 4.90015C0 8.09993 4.00004 12.1002 4.00004 12.1002C4.00004 12.1002 8.00007 8.09993 8.00007 4.90015C8.00015 4.37485 7.89674 3.85536 7.69574 3.37003C7.49475 2.88469 7.20014 2.44322 6.82869 2.07177C6.45724 1.70032 6.01605 1.40544 5.53071 1.20445C5.04537 1.00345 4.52535 0.900317 4.00004 0.900391ZM4.00004 6.50028C3.68366 6.50028 3.37446 6.40697 3.11138 6.23122C2.84831 6.05547 2.64326 5.80492 2.52214 5.51264C2.40101 5.22037 2.36917 4.89876 2.43081 4.58844C2.49245 4.27812 2.64467 3.99303 2.8683 3.76924C3.09194 3.54545 3.37696 3.39361 3.68723 3.33175C3.9975 3.26989 4.31907 3.30051 4.61143 3.42143C4.90379 3.54235 5.1538 3.748 5.32974 4.01095C5.50567 4.27391 5.59967 4.58268 5.59989 4.89906C5.59996 5.10923 5.55857 5.31735 5.47821 5.51155C5.39785 5.70575 5.28006 5.8824 5.1315 6.03107C4.98294 6.17974 4.80667 6.29728 4.61252 6.37778C4.41838 6.45828 4.21021 6.50021 4.00004 6.50028Z"
-                                                fill="#696969" />
+                                <h2 class="text-3xl md:text-4xl font-bold leading-tight">
+                                    Faça login para trabalhar na maior plataforma Musical do mercado!
+                                </h2>
+                                <p class="text-lg md:text-xl text-white/90">
+                                    Publique seus trabalhos, candidate-se a oportunidades e conecte-se com músicos profissionais de todo o Brasil.
+                                </p>
+                                <div class="grid md:grid-cols-2 gap-3 pt-2">
+                                    <div class="flex items-start gap-3 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                                        <svg class="w-6 h-6 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                                         </svg>
-                                        <span>Votorantim, São Paulo.</span>
+                                        <div>
+                                            <p class="font-semibold">Publique Gratuitamente</p>
+                                            <p class="text-sm text-white/80">Trabalhos ilimitados sem custo</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-3 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                                        <svg class="w-6 h-6 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                        </svg>
+                                        <div>
+                                            <p class="font-semibold">Candidate-se</p>
+                                            <p class="text-sm text-white/80">Oportunidades musicais diárias</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-3 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                                        <svg class="w-6 h-6 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                        </svg>
+                                        <div>
+                                            <p class="font-semibold">Contato Direto</p>
+                                            <p class="text-sm text-white/80">Fale com profissionais</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-3 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                                        <svg class="w-6 h-6 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                        </svg>
+                                        <div>
+                                            <p class="font-semibold">Seguro e Confiável</p>
+                                            <p class="text-sm text-white/80">Perfis verificados</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <h3 class="text-base text-gray-10 mt-5 mb-1.5">Dj para sua casa de Show, diarias de 2 a 4 Horas.
-                            </h3>
-                            <p class="text-sm text-gray-44 mb-4">Dj com 4 anos na área, participou ja de 40+ Grandes
-                                projetos.</p>
-                            <p class="text-xs text-gray-44">há 8 horas</p>
+                            <div class="flex-shrink-0 text-center">
+                                <a (click)="goToLogin()" style="cursor: pointer;"
+                                    class="bg-white text-indigo-600 px-10 py-5 rounded-2xl font-bold text-xl hover:bg-indigo-50 transition-all transform hover:scale-105 shadow-2xl flex items-center gap-3 mb-4 w-full md:w-auto justify-center group">
+                                    <svg class="w-7 h-7 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                                    </svg>
+                                    Fazer Login Agora
+                                </a>
+                                <div class="text-white/90 text-base">
+                                    Não tem conta? 
+                                    <a (click)="goToRegister()" style="cursor: pointer;" class="underline font-bold hover:text-white transition-colors ml-1">
+                                        Cadastre-se grátis aqui
+                                    </a>
+                                </div>
+                                <p class="text-sm text-white/70 mt-3">✨ Junte-se a milhares de músicos</p>
+                            </div>
                         </div>
+                    </div>
+                }
+
+                <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold">
+                            {{ filteredProjects.length }} trabalho{{ filteredProjects.length !== 1 ? 's' : '' }} encontrado{{ filteredProjects.length !== 1 ? 's' : '' }}
+                        </h2>
+                        @if (hasActiveFilters()) {
+                            <p class="text-sm text-gray-500 mt-1">
+                                Mostrando resultados filtrados de {{ projects.length }} trabalhos totais
+                            </p>
                         }
                     </div>
+                    <select [(ngModel)]="sortBy" (change)="applySort()"
+                            class="px-4 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="-createdAt">Mais recentes primeiro</option>
+                        <option value="createdAt">Mais antigos primeiro</option>
+                        <option value="budget">Menor orçamento</option>
+                        <option value="-budget">Maior orçamento</option>
+                        <option value="title">Título (A-Z)</option>
+                        <option value="-title">Título (Z-A)</option>
+                    </select>
                 </div>
+
+                @if (isLoading) {
+                    <div class="text-center py-20">
+                        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                        <p class="text-gray-600 mt-4">Carregando trabalhos...</p>
+                    </div>
+                } @else if (filteredProjects.length === 0) {
+                    <div class="text-center py-20">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <p class="text-gray-600 mt-4 text-lg">Nenhum trabalho encontrado.</p>
+                        @if (hasActiveFilters()) {
+                            <button (click)="clearFilters()" 
+                                    class="mt-4 text-indigo-600 hover:text-indigo-800 font-medium">
+                                Limpar filtros e ver todos
+                            </button>
+                        }
+                    </div>
+                } @else {
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        @for (project of filteredProjects; track project._id) {
+                            <div (click)="viewProject(project._id)" 
+                                 class="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-lg transition-all cursor-pointer transform hover:-translate-y-1 duration-200">
+                                
+                                <!-- Imagem do Projeto -->
+                                @if (project.imageUrl) {
+                                    <div class="mb-3 rounded-lg overflow-hidden">
+                                        <img [src]="project.imageUrl" 
+                                             [alt]="project.title"
+                                             class="w-full h-40 object-cover">
+                                    </div>
+                                }
+                                
+                                <div class="flex justify-between items-start mb-3">
+                                    <h3 class="text-lg font-semibold text-gray-900 line-clamp-2 flex-1">{{ project.title }}</h3>
+                                    <span class="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full whitespace-nowrap ml-2">
+                                        {{ project.musicalGenre }}
+                                    </span>
+                                </div>
+                                
+                                <p class="text-gray-600 text-sm mb-4 line-clamp-3">{{ project.description }}</p>
+                                
+                                <div class="space-y-2 text-sm text-gray-500">
+                                    @if (project.budget) {
+                                        <div class="flex items-center gap-2">
+                                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            <span class="font-medium text-gray-700">R$ {{ project.budget.min }} - R$ {{ project.budget.max }}</span>
+                                        </div>
+                                    }
+                                    @if (project.location?.city) {
+                                        <div class="flex items-center gap-2">
+                                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            </svg>
+                                            <span>{{ project.location?.city }}{{ project.location?.state ? ', ' + project.location?.state : '' }}</span>
+                                        </div>
+                                    }
+                                    @if (project.projectType) {
+                                        <div class="flex items-center gap-2">
+                                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                                            </svg>
+                                            <span>{{ project.projectType }}</span>
+                                        </div>
+                                    }
+                                    @if (project.duration) {
+                                        <div class="flex items-center gap-2">
+                                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            <span>{{ project.duration }}</span>
+                                        </div>
+                                    }
+                                </div>
+                                
+                                <div class="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between text-xs text-gray-500">
+                                    <span class="flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ project.author.name }}
+                                    </span>
+                                    <span class="flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ formatDate(project.createdAt) }}
+                                    </span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
             </main>
         </div>
 
-        <!-- Footer -->
         <app-footer></app-footer>
-    </div>`,
-    styles: [``]
+    </div>
+    `,
+    styles: []
 })
+export class FindJobsComponent implements OnInit {
+    projects: Project[] = [];
+    filteredProjects: Project[] = [];
+    isLoading = false;
+    
+    // Filtros
+    searchTerm = '';
+    selectedGenre = '';
+    selectedType = '';
+    selectedCity = '';
+    sortBy = '-createdAt';
+    
+    // Modal novo trabalho
+    showNewJobModal = false;
+    isSubmitting = false;
+    jobError = '';
+    newJob: any = {
+        title: '',
+        description: '',
+        musicalGenre: '',
+        projectType: '',
+        budget: { min: 0, max: 0 },
+        location: { city: '', state: '' },
+        duration: '',
+        deadline: '',
+        imageUrl: '',
+        contactPhone: ''
+    };
 
-export class FindJobsComponent { }
+    constructor(
+        private projectService: ProjectService,
+        private authService: AuthService,
+        private router: Router
+    ) {}
+
+    ngOnInit(): void {
+        this.loadProjects();
+    }
+
+    loadProjects(): void {
+        this.isLoading = true;
+        this.projectService.getProjects().subscribe({
+            next: (response: any) => {
+                this.projects = response.projects || [];
+                this.filteredProjects = [...this.projects];
+                this.applySort();
+                this.isLoading = false;
+            },
+            error: (error) => {
+                console.error('Erro ao carregar projetos:', error);
+                this.isLoading = false;
+            }
+        });
+    }
+
+    applyFilters(): void {
+        this.filteredProjects = this.projects.filter(project => {
+            const matchSearch = !this.searchTerm || 
+                project.title?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+                project.description?.toLowerCase().includes(this.searchTerm.toLowerCase());
+            
+            const matchGenre = !this.selectedGenre || project.musicalGenre === this.selectedGenre;
+            const matchType = !this.selectedType || project.projectType === this.selectedType;
+            const matchCity = !this.selectedCity || 
+                project.location?.city?.toLowerCase().includes(this.selectedCity.toLowerCase());
+            
+            return matchSearch && matchGenre && matchType && matchCity;
+        });
+        
+        this.applySort();
+    }
+
+    applySort(): void {
+        this.filteredProjects.sort((a, b) => {
+            switch (this.sortBy) {
+                case '-createdAt':
+                    return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
+                case 'createdAt':
+                    return new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime();
+                case 'budget':
+                    return (a.budget?.min || 0) - (b.budget?.min || 0);
+                case '-budget':
+                    return (b.budget?.max || 0) - (a.budget?.max || 0);
+                case 'title':
+                    return a.title.localeCompare(b.title);
+                case '-title':
+                    return b.title.localeCompare(a.title);
+                default:
+                    return 0;
+            }
+        });
+    }
+
+    hasActiveFilters(): boolean {
+        return !!(this.searchTerm || this.selectedGenre || this.selectedType || this.selectedCity);
+    }
+
+    getActiveFiltersCount(): number {
+        let count = 0;
+        if (this.searchTerm) count++;
+        if (this.selectedGenre) count++;
+        if (this.selectedType) count++;
+        if (this.selectedCity) count++;
+        return count;
+    }
+
+    clearFilters(): void {
+        this.searchTerm = '';
+        this.selectedGenre = '';
+        this.selectedType = '';
+        this.selectedCity = '';
+        this.applyFilters();
+    }
+
+    isLoggedIn(): boolean {
+        return this.authService.isLoggedIn();
+    }
+
+    goToLogin(): void {
+        console.log('Navegando para login...');
+        this.router.navigate(['/login']);
+    }
+
+    goToRegister(): void {
+        console.log('Navegando para registro...');
+        this.router.navigate(['/register']);
+    }
+
+    openNewJobModal(): void {
+        if (!this.authService.isLoggedIn()) {
+            this.router.navigate(['/login']);
+            return;
+        }
+        this.showNewJobModal = true;
+    }
+
+    closeNewJobModal(): void {
+        this.showNewJobModal = false;
+        this.jobError = '';
+        this.resetNewJob();
+    }
+
+    closeModal(event: Event): void {
+        this.closeNewJobModal();
+    }
+
+    resetNewJob(): void {
+        this.newJob = {
+            title: '',
+            description: '',
+            musicalGenre: '',
+            projectType: '',
+            budget: { min: 0, max: 0 },
+            location: { city: '', state: '' },
+            duration: '',
+            deadline: '',
+            imageUrl: '',
+            contactPhone: ''
+        };
+    }
+
+    getDefaultImage(genre: string): string {
+        const defaultImages: { [key: string]: string } = {
+            'Pop': 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800',
+            'Rock': 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=800',
+            'Jazz': 'https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=800',
+            'Sertanejo': 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=800',
+            'MPB': 'https://images.unsplash.com/photo-1507838153414-b4b713384a76?w=800',
+            'Eletrônica': 'https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=800',
+            'Hip Hop': 'https://images.unsplash.com/photo-1476610182048-b716b8518aae?w=800',
+            'Clássica': 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=800'
+        };
+        return defaultImages[genre] || 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=800';
+    }
+
+    onSubmitJob(): void {
+        this.jobError = '';
+        
+        if (!this.newJob.title || !this.newJob.description || !this.newJob.musicalGenre || !this.newJob.projectType || !this.newJob.contactPhone) {
+            this.jobError = 'Preencha todos os campos obrigatórios';
+            return;
+        }
+
+        // Pegar o usuário do localStorage
+        const userStr = localStorage.getItem('easymusic_user');
+        const user = userStr ? JSON.parse(userStr) : null;
+
+        // Se não tiver imagem, usar imagem padrão baseada no gênero
+        const imageUrl = this.newJob.imageUrl || this.getDefaultImage(this.newJob.musicalGenre);
+        
+        this.isSubmitting = true;
+        this.projectService.createProject({
+            ...this.newJob,
+            imageUrl,
+            authorId: user?.id,
+            authorName: user?.name
+        }).subscribe({
+            next: () => {
+                this.isSubmitting = false;
+                this.closeNewJobModal();
+                this.loadProjects();
+            },
+            error: (error) => {
+                this.isSubmitting = false;
+                this.jobError = 'Erro ao publicar trabalho. Tente novamente.';
+                console.error('Erro:', error);
+            }
+        });
+    }
+
+    viewProject(id?: string): void {
+        if (id) {
+            this.router.navigate(['/project', id]);
+        }
+    }
+
+    formatDate(date: any): string {
+        if (!date) return '';
+        const d = new Date(date);
+        const now = new Date();
+        const diff = now.getTime() - d.getTime();
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        
+        if (days === 0) return 'Hoje';
+        if (days === 1) return 'Ontem';
+        if (days < 7) return `${days} dias atrás`;
+        if (days < 30) return `${Math.floor(days / 7)} semanas atrás`;
+        return d.toLocaleDateString('pt-BR');
+    }
+}

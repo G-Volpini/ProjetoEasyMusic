@@ -23,7 +23,9 @@
             </svg>
           </div>
           <input type="text" 
-                 placeholder="Pesquisar..." 
+                 [(ngModel)]="searchTerm"
+                 (keyup.enter)="onSearch()"
+                 placeholder="Pesquisar músicos..." 
                  class="w-full h-11 pl-14 pr-4 bg-gray-bg/60 rounded-full border border-gray-lightest focus:outline-none focus:border-secondary transition-colors text-gray placeholder:text-gray" />
         </div>
       </div>
@@ -37,11 +39,11 @@
             Pessoas
           </button>
         </div>
-        <button class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+        <button class="flex items-center gap-2 hover:opacity-80 transition-opacity" (click)="onSortChange('-createdAt')">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path fill-rule="evenodd" clip-rule="evenodd" d="M1.09795 3.35997C0.99982 3.38019 0.907583 3.42248 0.82823 3.48364C0.748876 3.5448 0.684488 3.62323 0.639947 3.71297C0.604062 3.79624 0.58572 3.88601 0.586064 3.97668C0.586408 4.06735 0.605431 4.15698 0.641947 4.23997C0.684153 4.33625 0.750525 4.41999 0.834625 4.48307C0.918726 4.54614 1.0177 4.58641 1.12195 4.59997C1.30195 4.62797 18.6999 4.62797 18.8799 4.59897C18.9834 4.58427 19.0815 4.54365 19.1651 4.48089C19.2486 4.41812 19.315 4.33525 19.3579 4.23997C19.3998 4.1565 19.4175 4.06297 19.4089 3.96997C19.4089 3.83597 19.3999 3.79297 19.3549 3.70597C19.2863 3.57269 19.1756 3.46581 19.0399 3.40197L18.9299 3.34997L10.0599 3.34697C5.18095 3.34597 1.14895 3.35197 1.09795 3.35997Z" fill="#707070"/>
           </svg>
-          <span class="text-dark text-sm">Recomendado</span>
+          <span class="text-dark text-sm">Recente</span>
           <svg width="10" height="5" viewBox="0 0 10 5" fill="none">
             <path d="M5.78905 3.52041L9.00916 0.741028H2.56894L5.78905 3.52041Z" fill="#707070"/>
           </svg>
@@ -53,26 +55,31 @@
   <!-- Projects Grid -->
   <section class="bg-white py-12 relative">
     <div class="max-w-[1860px] mx-auto px-6">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-        <app-project-card></app-project-card>
-        <app-project-card></app-project-card>
-        <app-project-card></app-project-card>
-        <app-project-card></app-project-card>
-        <app-project-card></app-project-card>
-        <app-project-card></app-project-card>
-        <app-project-card></app-project-card>
-        <app-project-card></app-project-card>
-        <app-project-card></app-project-card>
-        <app-project-card></app-project-card>
-      </div>
+      @if (isLoading) {
+        <div class="text-center py-20">
+          <p class="text-gray-600">Carregando projetos...</p>
+        </div>
+      } @else if (projects.length === 0) {
+        <div class="text-center py-20">
+          <p class="text-gray-600">Nenhum projeto encontrado.</p>
+        </div>
+      } @else {
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+          @for (project of projects; track project._id) {
+            <app-project-card [project]="project"></app-project-card>
+          }
+        </div>
+      }
     </div>
 
     <!-- Gradient fade overlay -->
     <div class="absolute bottom-0 left-0 right-0 h-52 bg-gradient-fade pointer-events-none"></div>
   </section>
 
-  <!-- Login Section -->
-  <app-login-section></app-login-section>
+  <!-- Login Section - Only show if not authenticated -->
+  @if (!isAuthenticated) {
+    <app-login-section></app-login-section>
+  }
 </main>
 
 <app-footer></app-footer>

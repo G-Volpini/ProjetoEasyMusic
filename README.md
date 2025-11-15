@@ -1,11 +1,37 @@
-## Development server
+# 🎵 Como Testar o EasyMusic
 
-Para da inicio ao projeto, abra o terminal (console) e comece digitirando 
+## ✅ Sistema de Armazenamento JSON
 
-npm install 
+O backend agora salva todos os dados em arquivos JSON locais.
 
-e apos baixar todos os Modulos, digite
+### 📁 Localização dos Dados
 
+Os dados ficam salvos em:
+```
+backend/data/
+  ├── users.json      (usuários registrados)
+  ├── profiles.json   (perfis dos usuários)
+  └── projects.json   (projetos/cards)
+```
+
+## 🚀 Como Executar
+
+### 1. Iniciar o Backend
+
+```powershell
+cd backend
 npm start
+```
 
-Sera gerado um link, clicando nele vc visualiza de forma direta em seu navegador nossa pagina.
+**Saída esperada:**
+```
+🚀 Servidor rodando na porta 3000
+```
+
+### 2. Iniciar o Frontend (em outro terminal)
+
+```powershell
+npm start
+```
+
+O site abrirá em `http://localhost:4200`

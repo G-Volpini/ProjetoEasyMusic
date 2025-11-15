@@ -1,0 +1,58 @@
+[
+  {
+    "_id": "1763158870387",
+    "title": "RockAndRow",
+    "description": "Bares de Sorocaba",
+    "imageUrl": "https://via.placeholder.com/686x536",
+    "musicalGenre": "Rock",
+    "tags": [],
+    "projectType": "Show ao vivo",
+    "budget": {
+      "min": 1000,
+      "max": 10000
+    },
+    "duration": "1 Hora",
+    "location": {
+      "city": "Sorocaba",
+      "state": "São Paulo"
+    },
+    "deadline": "2025-11-15",
+    "author": {
+      "userId": "1763154403672",
+      "name": "dsadadadadsada"
+    },
+    "status": "active",
+    "likes": 0,
+    "views": 21,
+    "createdAt": "2025-11-14T22:21:10.387Z",
+    "updatedAt": "2025-11-14T22:21:10.387Z"
+  },
+  {
+    "_id": "1763159577811",
+    "title": "Teste",
+    "description": "Teste",
+    "imageUrl": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800",
+    "musicalGenre": "Pop",
+    "tags": [],
+    "projectType": "Show ao vivo",
+    "budget": {
+      "min": 1000,
+      "max": 10000
+    },
+    "duration": "1 Hora",
+    "location": {
+      "city": "Sorocaba",
+      "state": "São Paulo"
+    },
+    "deadline": "2025-11-21",
+    "author": {
+      "userId": "1763154403672",
+      "name": "dsadadadadsada"
+    },
+    "status": "active",
+    "likes": 0,
+    "views": 17,
+    "createdAt": "2025-11-14T22:32:57.811Z",
+    "updatedAt": "2025-11-14T22:32:57.811Z"
+  }
+]

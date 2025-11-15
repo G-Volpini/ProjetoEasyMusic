@@ -1,0 +1,44 @@
+[
+  {
+    "_id": "1763154403674-profile",
+    "userId": "1763154403672",
+    "bio": "sqaknçdaskçfdasjkçdakjz",
+    "genres": [],
+    "instruments": [
+      "deda"
+    ],
+    "location": {},
+    "hourlyRate": 12312312,
+    "socialMedia": {},
+    "createdAt": "2025-11-14T21:06:43.674Z",
+    "musicalGenres": [
+      "Pop",
+      "Rock"
+    ],
+    "availability": "Disponível",
+    "yearsOfExperience": 2,
+    "updatedAt": "2025-11-14T22:16:22.886Z"
+  },
+  {
+    "_id": "1763160101970-profile",
+    "userId": "1763160101968",
+    "bio": "",
+    "genres": [],
+    "instruments": [],
+    "location": {},
+    "hourlyRate": null,
+    "socialMedia": {},
+    "createdAt": "2025-11-14T22:41:41.970Z"
+  },
+  {
+    "_id": "1763164252641-profile",
+    "userId": "1763164252639",
+    "bio": "",
+    "genres": [],
+    "instruments": [],
+    "location": {},
+    "hourlyRate": null,
+    "socialMedia": {},
+    "createdAt": "2025-11-14T23:50:52.641Z"
+  }
+]
